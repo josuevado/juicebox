@@ -186,6 +186,24 @@ async function getAllPosts() {
   }
 }
 
+async function getPostsByUser(userId) {
+  try {
+    const { rows: postIds } = await client.query(`
+      SELECT id 
+      FROM posts 
+      WHERE "authorId"=${userId};
+    `);
+
+    const posts = await Promise.all(
+      postIds.map((post) => getPostById(post.id))
+    );
+
+    return posts;
+  } catch (error) {
+    throw error;
+  }
+}
+
 async function getPostById(postId) {
   try {
     const {
@@ -198,6 +216,13 @@ async function getPostById(postId) {
     `,
       [postId]
     );
+    //this is new
+    if (!post) {
+      throw {
+        name: "PostNotFoundError",
+        message: "Could not find a post with that postId",
+      };
+    }
 
     const { rows: tags } = await client.query(
       `
@@ -231,19 +256,27 @@ async function getPostById(postId) {
   }
 }
 
-async function getPostsByUser(userId) {
+async function getUserByUsername(username) {
   try {
-    const { rows: postIds } = await client.query(`
-      SELECT id 
-      FROM posts 
-      WHERE "authorId"=${userId};
-    `);
-
-    const posts = await Promise.all(
-      postIds.map((post) => getPostById(post.id))
+    const {
+      rows: [user],
+    } = await client.query(
+      `
+      SELECT *
+      FROM users
+      WHERE username=$1
+    `,
+      [username]
     );
 
-    return posts;
+    if (!user) {
+      throw {
+        name: "UserNotFoundError",
+        message: "A user with that username does not exist",
+      };
+    }
+
+    return user;
   } catch (error) {
     throw error;
   }
@@ -369,4 +402,6 @@ module.exports = {
   getAllTags,
   createPostTag,
   addTagsToPost,
+  getUserByUsername,
+  getPostById,
 };
